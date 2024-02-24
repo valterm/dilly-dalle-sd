@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  dillydalle:
+    container_name: "dilly-dalle"
+    build: .
+    restart: always
+    environment:
+    - "LOGGING_LEVEL=INFO" # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    - "TELEGRAM_BOT_TOKEN="
+    - "OPENAI_API_TOKEN="
+    - "BOT_USERNAME="
+    - "STABLE_DIFFUSION_URL="
+    volumes:
+    - ./images:/images
