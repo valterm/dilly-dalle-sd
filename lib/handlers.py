@@ -260,6 +260,42 @@ class RequestHandler:
 
         self.logger.debug('Exiting generate_handler')
 
+    def __sd_variation_handler(self, update: Update, context: CallbackContext, request_type: str):
+        logging.debug('Entering: __change_handler')
+        try:
+            if request_type == 'photo':
+                image_file = self.__get_image_from_message(update)
+                prompt = update.message.caption
+            elif request_type == 'reply':
+                image_file = self.__get_image_from_reply(update.message.reply_to_message)
+                prompt = update.message.text
+
+            image_jpg = self.__download_image_into_memory(image_file.file_path)
+
+        except Exception as e:
+            logging.error(f"Error getting image: ")
+            self.__send_text_reply(update, context, f"There was an error processing the image:\n{e}")
+            return
+
+        # Get user
+        user = self.__get_username_from_message(update)
+
+        # Get prompt
+        prompt = self.__strip_input(prompt, ['/variation', '@'+context.bot.username])
+
+
+        sd = StableDiffusion(url=self.stable_diffusion_url)
+
+        img = sd.generate_image_variation(image=image_jpg, prompt=prompt, username=user['username'])
+        image_path = f"/app/data/images/{img}"
+        image = self.__read_image_file_into_memory(image_path)
+
+        # Log generated image into database
+        self.dp.log_new_image(user, img, prompt, "variation")
+
+        # Send image
+        self.__send_photo_reply(update, context, image)
+        logging.debug('Exiting: __change_handler')
 
 ### COMMAND HANDLERS
     def start_command_handler(self, update: Update, context: CallbackContext):
@@ -321,3 +357,25 @@ class RequestHandler:
         self.logger.debug('Entering mywords')
         # Get all aliases for a user
         threading.Thread(target=self.__get_all_aliases, args=(update, context)).start()
+
+    def photo_filter_handler(self, update: Update, context: CallbackContext):
+        """
+        Handler for photo messages
+        """
+        self.logger.debug('Entering photo_filter_handler')
+        # Start thread to generate image
+        if update.message.caption and "/variation" in update.message.caption:
+            threading.Thread(target=self.__sd_variation_handler, args=(update, context, 'photo')).start()        
+        self.logger.debug('Exiting photo_filter_handler')
+
+    def variation_command_handler(self, update: Update, context: CallbackContext):
+        """
+        Handler for the /variation command
+        """
+        self.logger.debug('Entering variation_handler')
+        if update.message.reply_to_message:
+            if update.message.reply_to_message.photo:
+                threading.Thread(target=self.__sd_variation_handler, args=(update, context, 'reply')).start()
+            else:
+                self.__send_text_reply(update, context, 'Reply to an image or send a new photo to generate a variation.')
+        self.logger.debug('Exiting variation_handler')

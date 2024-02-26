@@ -41,6 +41,8 @@ class App():
         teach_handler = CommandHandler('teach', command_handler.teach_alias_command_handler)
         forget_handler = CommandHandler('forget', command_handler.forget_alias_command_handler)
         mywords_handler = CommandHandler('mywords', command_handler.mywords_command_handler)
+        photo_filter_handler = (MessageHandler(Filters.photo, command_handler.photo_filter_handler)) # Needed for photos sent directly with /variation in the caption
+        variation_reply_handler = CommandHandler('variation', command_handler.variation_command_handler) # Needed for /variation as a reply to a photo
 
         # Add handlers to dispatcher
         dispatcher.add_handler(start_handler)
@@ -50,6 +52,8 @@ class App():
         dispatcher.add_handler(teach_handler)
         dispatcher.add_handler(forget_handler)
         dispatcher.add_handler(mywords_handler)
+        dispatcher.add_handler(photo_filter_handler)
+        dispatcher.add_handler(variation_reply_handler)
 
 
 

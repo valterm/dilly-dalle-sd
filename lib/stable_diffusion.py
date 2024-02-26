@@ -11,7 +11,6 @@ import base64
 
 class StableDiffusion:
     def __init__(self, url):
-        self.name="Stable Diffusion"
         self.url = url
 
     def generate_image(self, prompt, height="512", width="512", username=""):
