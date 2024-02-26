@@ -12,7 +12,6 @@ class App():
     def __init__(self):
         # Load environment variables
         self.telegram_bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
-        self.bot_username = os.environ.get('BOT_USERNAME')
         self.stable_diffusion_url = os.environ.get('STABLE_DIFFUSION_URL')
         self.loglevel = os.environ.get('LOGLEVEL')
         self.database = os.environ.get('DATABASE_URL')

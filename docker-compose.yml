@@ -1,14 +1,13 @@
 version: "3.9"
 services:
-  dillydalle:
-    container_name: "dilly-dalle"
+  dilly-dalle-sd:
+    container_name: "dilly-dalle-sd-bot"
     build: .
     restart: always
     environment:
-    - "LOGGING_LEVEL=INFO" # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    - "LOGLEVEL=DEBUG" # DEBUG, INFO, WARNING, ERROR, CRITICAL
     - "TELEGRAM_BOT_TOKEN="
-    - "OPENAI_API_TOKEN="
-    - "BOT_USERNAME="
     - "STABLE_DIFFUSION_URL="
+    - "DATABASE_URL=/app/data/sqlite/dilly-dalle-sd.db" # Only modify if you want different volume mappings
     volumes:
-    - ./images:/images
+      - ./data:/app/data # sqlite db and generated images
