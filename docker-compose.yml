@@ -8,6 +8,6 @@ services:
     - "LOGLEVEL=DEBUG" # DEBUG, INFO, WARNING, ERROR, CRITICAL
     - "TELEGRAM_BOT_TOKEN="
     - "STABLE_DIFFUSION_URL="
-    - "DATABASE_URL=/app/data/sqlite/dilly-dalle-sd.db" # Only modify if you want different volume mappings
+    - "DATABASE_URL=/app/data/sqlite/dilly-dalle-sd.db" # Only modify if you want different volume mappings. If you change the filename update entrypoint.sh
     volumes:
       - ./data:/app/data # sqlite db and generated images
