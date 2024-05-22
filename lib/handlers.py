@@ -9,7 +9,6 @@ import threading
 import requests
 import uuid
 from io import BytesIO
-import apsw
 
 
 class RequestHandler:
@@ -89,8 +88,11 @@ class RequestHandler:
         update.message.reply_photo(
             photo=photo,
             reply_to_message_id=update.message.message_id,
-            caption=caption
+            caption=caption,
+            has_media_spoiler=self.dp.get_spoiler_status(update.effective_chat.id)
         )
+
+        print(update.effective_chat)
 
     ### IMAGE HELPERS
     def __get_image_from_message(self, update: Update):

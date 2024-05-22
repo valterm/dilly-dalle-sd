@@ -22,6 +22,16 @@ class DataProcessor:
         except Exception as e:
             self.logger.error('Error logging user: %s', e)
 
+    def __log_new_chat(self, chat: dict):
+        """
+        Log a new chat into the database.
+        """
+        sql = 'INSERT INTO chats (telegram_chat_id, chat_name) VALUES (?, ?,)'
+        try:
+            self.cursor.execute(sql, (chat['id'], chat['title']))
+        except Exception as e:
+            self.logger.error('Error logging chat: %s', e)
+
     def __log_new_image(self, username: str, image_name: str, prompt: str, action_type: str = 'new'):
         """
         Log a new image into the database.
@@ -189,3 +199,6 @@ class DataProcessor:
         else:
             self.__log_new_user(user)
         return []
+    
+    def get_spoiler_status(self, chat_id: dict):
+        return True
