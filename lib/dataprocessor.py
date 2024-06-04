@@ -2,17 +2,157 @@ import apsw
 import uuid
 import logging
 
+# @TODO: Add logging
+# @TODO: Update handlers in async_handlers.py to pass chat <dict> instead of chat_id <int>; update
+#        the aliasing and spoiler handlers to use __user_chat_handler() to log new chats in case they don't exist
+# @TODO: Create method to validate user username; raise exception if username is invalid for alias
+
 class DataProcessor:
     def __init__(self, database: str):
         self.con = apsw.Connection(database)
         self.cursor = self.con.cursor()
         self.logger = logging.getLogger(__name__)
 
+    ###########
+    # Getters #
+    ###########
+
+    def __get_chat_type_id(self, chat_type: str):
+        """
+        Get the chat_type_id from the chat type name.
+        """
+        sql = 'SELECT chat_type_id FROM chat_types WHERE name = ?'
+        try:
+            self.cursor.execute(sql, (chat_type,))
+            result = self.cursor.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            self.logger.error('Error getting chat type id: %s', e)
+            return None
+        
+    def __get_user_id(self, user: dict):
+        """
+        Get the user_id from the user.
+        """
+        # If the user has a username, use that
+        if user.get('username'):
+            sql = 'SELECT user_id FROM users WHERE username = ?'
+            try:
+                self.cursor.execute(sql, (user['username'],))
+                result = self.cursor.fetchone()
+                return result[0] if result else None
+            except Exception as e:
+                self.logger.error('Error getting user id: %s', e)
+                return None
+        # If the user doesn't have a username, use the full name
+        else:
+            sql = 'SELECT user_id FROM users WHERE full_name = ?'
+            try:
+                self.cursor.execute(sql, (user['full_name'],))
+                return self.cursor.fetchone()
+            except Exception as e:
+                self.logger.error('Error getting user id: %s', e)
+                return None
+        
+    def __get_userchat_id(self, user_id: int, chat_id: int):
+        """
+        Get the userchat_id from the user_id and chat_id.
+        """
+        sql = 'SELECT userchat_id FROM userchats WHERE user_id = ? AND chat_id = ?'
+        data = (user_id, chat_id)
+        try:
+            self.cursor.execute(sql, data)
+            result = self.cursor.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            self.logger.error('Error getting userchat id: %s', e)
+            return None
+
+    def __get_image_type_id(self, image_type: str):
+        """
+        Get the image_type_id from the image type name.
+        """
+        sql = 'SELECT image_type_id FROM image_types WHERE name = ?'
+        try:
+            self.cursor.execute(sql, (image_type,))
+            result = self.cursor.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            self.logger.error('Error getting image type id: %s', e)
+            return None
+
+    def __get_chat_id(self, chat_id: int):
+        """
+        Get the chat_id from the chat_id.
+        """
+        sql = 'SELECT chat_id FROM chats WHERE telegram_chat_id = ?'
+        try:
+            self.cursor.execute(sql, (chat_id,))
+            result = self.cursor.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            self.logger.error('Error getting chat id: %s', e)
+            return None
+
+    def __get_spoiler_status(self, userchat_id: int):
+        """
+        Get the spoiler status from the userchat_id.
+        """
+        sql = 'SELECT status FROM spoiler_status WHERE userchat_id = ?'
+        try:
+            self.cursor.execute(sql, (userchat_id,))
+            result = self.cursor.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            self.logger.error('Error getting spoiler status: %s', e)
+            return None
+
+    def __dump_aliases(self, userchat_id: int):
+        """
+        Get all the aliases and their values for the userchat.
+        """
+        sql = 'SELECT alias, replacement FROM aliases WHERE userchat_id = ?'
+        try:
+            self.cursor.execute(sql, (userchat_id,))
+            result = self.cursor.fetchall()
+            return result
+        except Exception as e:
+            self.logger.error('Error dumping aliases: %s', e)
+            return None 
+        
+    def __get_alias(self, userchat_id: int, alias: str):
+        """
+        Get an the alias.
+        """
+        sql = 'SELECT replacement FROM aliases WHERE userchat_id = ? AND alias = ?'
+        data = (userchat_id, alias)
+        try:
+            self.cursor.execute(sql, data)
+            result = self.cursor.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            self.logger.error('Error getting alias: %s', e)
+            return None
+        
+    ###########
+    # Loggers #
+    ###########
+
+    def __log_new_image(self, userchat_id, image_name: str, prompt: str, action_type_id: int):
+        """
+        Log a new image into the database.
+        """
+        try:
+            sql = 'INSERT INTO gen_log (userchat_id, prompt, image_type_id, filename) VALUES (?, ?, ?, ?)'
+            self.cursor.execute(sql, (userchat_id, prompt, action_type_id, image_name))
+        except Exception as e:
+            self.logger.error('Error logging image: %s', e)    
+    
     def __log_new_user(self, user: dict):
         """
         Log a new user into the database.
         """
-        sql = 'INSERT INTO users (username, full_name, is_username) VALUES (?, ?, ?)'
+        sql = 'INSERT or IGNORE INTO users (username, full_name, is_username) VALUES (?, ?, ?)'
         if user.get('username'):
             data = (user['username'], user['full_name'], True)
         else:
@@ -21,184 +161,167 @@ class DataProcessor:
             self.cursor.execute(sql, data)
         except Exception as e:
             self.logger.error('Error logging user: %s', e)
-
-    def __log_new_chat(self, chat: dict):
+            self.logger.error(f"user: {user}")
+    
+    def __log_new_chat(self, chat_id: int, chat_type_id: int):
         """
         Log a new chat into the database.
         """
-        sql = 'INSERT INTO chats (telegram_chat_id, chat_name) VALUES (?, ?,)'
+        sql = 'INSERT or IGNORE INTO chats (telegram_chat_id, chat_type_id) VALUES (?, ?)'
+        data = (chat_id, chat_type_id)
         try:
-            self.cursor.execute(sql, (chat['id'], chat['title']))
+            self.cursor.execute(sql, data)
         except Exception as e:
             self.logger.error('Error logging chat: %s', e)
+            self.logger.error(f"chat_id: {chat_id}, chat_type_id: {chat_type_id}")
 
-    def __log_new_image(self, username: str, image_name: str, prompt: str, action_type: str = 'new'):
+    def __log_new_userchat(self, user_id: int, chat_id: int):
         """
-        Log a new image into the database.
+        Log a new userchat into the database.
         """
+        sql = 'INSERT or IGNORE INTO userchats (user_id, chat_id) VALUES (?, ?)'
+        data = (user_id, chat_id)
         try:
-            sql = 'INSERT INTO logs (username, filename, action, prompt) VALUES (?, ?, ?, ?)'
-            self.cursor.execute(sql, (username, image_name, action_type, prompt))
+            self.cursor.execute(sql, data)
         except Exception as e:
-            self.logger.error('Error logging image: %s', e)
-
-    def __user_exists(self, username: str):
-        """
-        Check if a user exists in the database.
-        """
-        try:
-            self.cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
-            return self.cursor.fetchone() is not None
-        except Exception as e:
-            self.logger.error('Error checking if user exists: %s', e)
-            return False
-
-    def __validate_user(self, username: str):
-        """
-        Check if the user has a valid username using the is_username field.
-        """
-        try:
-            self.cursor.execute('SELECT * FROM users WHERE username = ? AND is_username = 1', (username,))
-            user = self.cursor.fetchone()
-            if user:
-                return True  # is_username
-            else:
-                return False
-        except Exception as e:
-            self.logger.error(f'Error validating user: {e}')
-            return False
-
-    def __get_all_data_from_table(self, table: str):
-        """
-        Get all data from a table.
-        """
-        try:
-            sql = f'SELECT * FROM {table}'
-            self.cursor.execute(sql)
-            return self.cursor.fetchall()
-        except Exception as e:
-            self.logger.error('Error getting all data from table: %s', e)
-            return []
-
-    def __save_alias(self, username: str, alias: str, text: str):
-        """
-        Save an alias into the database for users with a valid username.
-        """
-        # Remove newlines and replace them with spaces
-        text = text.replace('\n', ' ')
+            self.logger.error('Error logging userchat: %s', e)
         
-        if self.__validate_user(username):
-            try:
-                sql = 'INSERT INTO aliases (username, alias, replacement) VALUES (?, ?, ?) ON CONFLICT(username, alias) DO UPDATE SET replacement = ?'
-                self.cursor.execute(sql, (username, alias, text, text))
-            except Exception as e:
-                self.logger.error(f'Error saving alias: {e}')
-        else:
-            self.logger.error('No valid username for user')
-            raise ValueError(f'No valid username for user {username}')
-
-    def __retrieve_alias(self, username: str, alias: str):
-        """
-        Retrieve an alias from the database.
-        """
+        # Initialize the spoiler status for the userchat
+        sql = 'INSERT or IGNORE INTO spoiler_status (userchat_id, status) VALUES (?, ?)'
+        userchat_id = self.__get_userchat_id(user_id, chat_id)
+        data = (userchat_id, False)
         try:
-            sql = 'SELECT replacement FROM aliases WHERE username = ? AND alias = ?'
-            self.cursor.execute(sql, (username, alias))
-            alias = self.cursor.fetchone()
-
-            if alias:
-                return alias[0]
-            else:
-                return None
-
+            self.cursor.execute(sql, data)
         except Exception as e:
-            self.logger.error(f'Error retrieving alias: {e}')
-            return None
+            self.logger.error('Error initializing spoiler status: %s', e)
 
-    def __delete_alias(self, username: str, alias: str):
+    def __user_chat_handler(self, user: dict, chat_id, chat_type: str):
         """
-        Delete an alias from the database.
+        Log a new user and chat into the database.
         """
+        self.__log_new_user(user)
+        user_id = self.__get_user_id(user)
+        chat_type_id = self.__get_chat_type_id(chat_type)
+        self.__log_new_chat(chat_id, chat_type_id)
+        chat_id = self.__get_chat_id(chat_id)
+        self.__log_new_userchat(user_id, chat_id)
+        userchat_id = self.__get_userchat_id(user_id, chat_id)
+
+        retval = {
+            'user_id': user_id,
+            'chat_id': chat_id,
+            'userchat_id': userchat_id
+        }
+        return retval
+        
+    ###########
+    # Setters #
+    ###########
+
+    def __set_spoiler_status(self, userchat_id: int, spoiler_status: bool):
+        """
+        Set the spoiler status for the user.
+        """
+        sql = 'UPDATE spoiler_status SET status = ? WHERE userchat_id = ?'
+        data = (spoiler_status, userchat_id)
         try:
-            logging.debug(f'Deleting alias {alias} for user {username}')
-            sql = 'DELETE FROM aliases WHERE username = ? AND alias = ?'
-            self.cursor.execute(sql, (username, alias))
+            self.cursor.execute(sql, data)
         except Exception as e:
-            self.logger.error(f'Error deleting alias: {e}')
+            self.logger.error('Error setting spoiler status: %s', e)
 
-    def __get_all_aliases(self, username: str):
+    def __set_alias(self, userchat_id: int, alias: str, replacement: str):
         """
-        Get all aliases for a user.
+        Set the alias for the userchat.
         """
+        sql = 'INSERT or REPLACE INTO aliases (userchat_id, alias, replacement) VALUES (?, ?, ?)'
+        data = (userchat_id, alias, replacement)
         try:
-            sql = 'SELECT alias, replacement FROM aliases WHERE username = ?'
-            self.cursor.execute(sql, (username,))
-            return self.cursor.fetchall()
+            self.cursor.execute(sql, data)
         except Exception as e:
-            self.logger.error(f'Error getting all aliases: {e}')
-            return []
+            self.logger.error('Error setting alias: %s', e)
+    
+    def __delete_alias(self, userchat_id: int, alias: str):
+        """
+        Delete the alias for the userchat.
+        """
+        sql = 'DELETE FROM aliases WHERE userchat_id = ? AND alias = ?'
+        data = (userchat_id, alias)
+        try:
+            self.cursor.execute(sql, data)
+        except Exception as e:
+            self.logger.error('Error deleting alias: %s', e)
 
-    ### PUBLIC METHODS
-    def log_new_image(self, user: dict, image_name: str, prompt: str, action_type: str = 'new'):
+    ##################
+    # Public methods #  
+    ##################
+
+    def log_new_image(self, user: dict, chat_id: int, image_name: str, prompt: str, image_type: str, chat_type: str):
         """
         Log a new image into the database.
         """
-        if not self.__user_exists(user['username']):
-            self.__log_new_user(user)
-        logging.info('Logging new image')
-        self.__log_new_image(user['username'], image_name, prompt, action_type)
-
-    def dump_data(self, table: str):
-        """
-        Get all data from a table.
-        """
-        return self.__get_all_data_from_table(table)
-
-    def teach_alias(self, user: dict, alias: str, text: str):
-        """
-        Save an alias into the database for users with a valid username.
-        """
-        if not self.__user_exists(user['username']):
-            self.__log_new_user(user)
-
-        if self.__validate_user(user['username']):
-            self.__save_alias(user['username'], alias, text)
-        else:
-            raise ValueError('No valid username for user')
-
-    def get_alias(self, user: dict, alias: str):
-        """
-        Retrieve an alias from the database.
-        """
-        if self.__user_exists(user['username']):
-            if self.__validate_user(user['username']):
-                return self.__retrieve_alias(user['username'], alias)
-            else:
-                raise ValueError('No valid username for user')
-        else:
-            self.__log_new_user(user)
-            return None
-
-    def forget_alias(self, user: dict, alias: str):
-        """
-        Delete an alias from the database.
-        """
-        if self.__user_exists(user['username']):
-            if self.__validate_user(user['username']):
-                self.__delete_alias(user['username'], alias)
-        else:
-            self.__log_new_user(user)
-
-    def dump_aliases(self, user: dict):
-        """
-        Get all aliases for a user.
-        """
-        if self.__user_exists(user['username']):
-            if self.__validate_user(user['username']):
-                return self.__get_all_aliases(user['username'])    
-        else:
-            self.__log_new_user(user)
-        return []
+        self.__user_chat_handler(user, chat_id, chat_type)
+        user_id = self.__get_user_id(user)
+        chat_id = self.__get_chat_id(chat_id)
+        userchat_id = self.__get_userchat_id(user_id, chat_id)
+        image_type_id = self.__get_image_type_id(image_type)
+        self.__log_new_image(userchat_id, image_name, prompt, image_type_id)
+        
     
-    def get_spoiler_status(self, chat_id: dict):
-        return True
+    def set_spoiler_status(self, user: dict, chat_id: int, spoiler_status: bool):
+        """
+        Set the spoiler status for the user.
+        """
+        user_id = self.__get_user_id(user)
+        chat_id = self.__get_chat_id(chat_id)
+        userchat_id = self.__get_userchat_id(user_id, chat_id)
+        self.__set_spoiler_status(userchat_id, spoiler_status)
+
+    def get_spoiler_status(self, user: dict, chat_id: int):
+        """
+        Get the spoiler status for the user.
+        """
+        self.logger.debug(f'user: {user}, chat_id: {chat_id}')
+        user_id = self.__get_user_id(user)
+        chat_id = self.__get_chat_id(chat_id)
+        userchat_id = self.__get_userchat_id(user_id, chat_id)
+        return self.__get_spoiler_status(userchat_id)
+    
+    def teach_alias(self, user: dict, chat_id: int, alias: str, replacement: str):
+        """
+        Set the alias for the user.
+        """
+        user_id = self.__get_user_id(user)
+        chat_id = self.__get_chat_id(chat_id)
+        self.__log_new_userchat(user_id, chat_id)
+        userchat_id = self.__get_userchat_id(user_id, chat_id)
+        self.__set_alias(userchat_id, alias, replacement)
+    
+    def forget_alias(self, user: dict, chat_id: int, alias: str):
+        """
+        Delete the alias for the user.
+        """
+        user_id = self.__get_user_id(user)
+        chat_id = self.__get_chat_id(chat_id)
+        self.__log_new_userchat(user_id, chat_id)
+        userchat_id = self.__get_userchat_id(user_id, chat_id)
+        self.__delete_alias(userchat_id, alias)
+    
+    def dump_aliases(self, user: dict, chat_id: int):
+        """
+        Get all the aliases for the user.
+        """
+        user_id = self.__get_user_id(user)
+        chat_id = self.__get_chat_id(chat_id)
+        self.__log_new_userchat(user_id, chat_id)
+        userchat_id = self.__get_userchat_id(user_id, chat_id)
+        return self.__dump_aliases(userchat_id)
+    
+    def get_alias(self, user: dict, chat_id: int, alias: str):
+        """
+        Get the alias for the user.
+        """
+        user_id = self.__get_user_id(user)
+        chat_id = self.__get_chat_id(chat_id)
+        self.__log_new_userchat(user_id, chat_id)
+        userchat_id = self.__get_userchat_id(user_id, chat_id)
+        return self.__get_alias(userchat_id, alias)

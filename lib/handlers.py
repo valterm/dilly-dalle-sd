@@ -61,7 +61,7 @@ class RequestHandler:
         return aliases
 
     ### SENDERS
-    def __send_text_message(self, update: Update, context: CallbackContext, message: str):
+    async def __send_text_message(self, update: Update, context: CallbackContext, message: str):
         """
         Sends a text message to the chat
         """
@@ -70,26 +70,28 @@ class RequestHandler:
             text=message
         )
 
-    def __send_text_reply(self, update: Update, context: CallbackContext, message: str):
+    async def __send_text_reply(self, update: Update, context: CallbackContext, message: str):
         """
         Send a text message as a reply to another message
         """
         # Send message
-        update.message.reply_text(
+        await update.message.reply_text(
             text=message,
-            reply_to_message_id=update.message.message_id
+            reply_to_message_id=update.message.message_id,
+            # allow_sending_without_reply=True
         )
 
-    def __send_photo_reply(self, update: Update, context: CallbackContext, photo: bytes, caption: str = None):
+    async def __send_photo_reply(self, update: Update, context: CallbackContext, photo: bytes, caption: str = None):
         """
         Send a photo as a reply to another message
         """
         # Send photo
-        update.message.reply_photo(
+        await update.message.reply_photo(
             photo=photo,
             reply_to_message_id=update.message.message_id,
             caption=caption,
-            has_media_spoiler=self.dp.get_spoiler_status(update.effective_chat.id)
+            # has_spoiler=self.dp.get_spoiler_status(update.effective_chat.id)
+            # allow_sending_without_reply=True
         )
 
         print(update.effective_chat)
@@ -224,7 +226,7 @@ class RequestHandler:
 
 
     ### IMAGE GENERATION
-    def __generate_new_image(self, update: Update, context: CallbackContext):
+    async def __generate_new_image(self, update: Update, context: CallbackContext):
 
         """
         Handler for the /picgen command
@@ -252,17 +254,21 @@ class RequestHandler:
         image_name = sd.generate_image(prompt)
         image_path = f"/app/data/images/{image_name}"
 
-        # Log generated image into database
-        self.dp.log_new_image(user, image_name, prompt, "new")
-
         # Read the image into memory
         image = self.__read_image_file_into_memory(image_path)
+
+        self.logger.debug("DEBUG THIS CUNT")
+        self.logger.debug(update)
+
+        # Log the new image into the database
+        self.dp.log_new_image(user=user, chat_id=update.effective_chat.id, image_name=image_name, prompt=prompt, image_type='new', chat_type=update.effective_chat.type)
+
         # Send the image as a reply
-        self.__send_photo_reply(update, context, image)
+        await self.__send_photo_reply(update, context, image)
 
         self.logger.debug('Exiting generate_handler')
 
-    def __sd_variation_handler(self, update: Update, context: CallbackContext, request_type: str):
+    async def __sd_variation_handler(self, update: Update, context: CallbackContext, request_type: str):
         logging.debug('Entering: __change_handler')
         try:
             if request_type == 'photo':
@@ -276,7 +282,7 @@ class RequestHandler:
 
         except Exception as e:
             logging.error(f"Error getting image: ")
-            self.__send_text_reply(update, context, f"There was an error processing the image:\n{e}")
+            await self.__send_text_reply(update, context, f"There was an error processing the image:\n{e}")
             return
 
         # Get user
@@ -296,19 +302,19 @@ class RequestHandler:
         self.dp.log_new_image(user, img, prompt, "variation")
 
         # Send image
-        self.__send_photo_reply(update, context, image)
+        await self.__send_photo_reply(update, context, image)
         logging.debug('Exiting: __change_handler')
 
 ### COMMAND HANDLERS
-    def start_command_handler(self, update: Update, context: CallbackContext):
+    async def start_command_handler(self, update: Update, context: CallbackContext):
         """
         Handler for the /start command
         """
-        self.logger.debug('Entering start_handler')
+        self.logger.debug(f'DEBUG BITCH {update}')
         update.message.reply_text('Hello! I am a bot that can generate images from text. Send me a description and I will generate an image for you!')
         self.logger.debug('Exiting start_handler')
 
-    def help_command_handler(self, update: Update, context: CallbackContext):
+    async def help_command_handler(self, update: Update, context: CallbackContext):
         """
         Handler for the /help command
         """
@@ -316,7 +322,7 @@ class RequestHandler:
         update.message.reply_text('I can generate images from text. Send me a description and I will generate an image for you!')
         self.logger.debug('Exiting help_handler')
 
-    def logs_command_handler(self, update: Update, context: CallbackContext):
+    async def logs_command_handler(self, update: Update, context: CallbackContext):
         """
         Handler for the /logs command
         """
@@ -327,57 +333,64 @@ class RequestHandler:
         self.__send_text_reply(update, context, logs)
         self.logger.debug('Exiting logs_dump_handler')
 
-    def picgen_command_handler(self, update: Update, context: CallbackContext):
+    async def picgen_command_handler(self, update: Update, context: CallbackContext):
         """
         Handler for the /picgen command
         """
         self.logger.debug('Entering generate_handler')
         # Start thread to generate image
-        threading.Thread(target=self.__generate_new_image, args=(update, context)).start()
+        # threading.Thread(target=self.__generate_new_image, args=(update, context)).start()
+        await self.__generate_new_image(update, context)
         self.logger.debug('Exiting generate_handler')
 
-    def teach_alias_command_handler(self, update: Update, context: CallbackContext):
+    async def teach_alias_command_handler(self, update: Update, context: CallbackContext):
         """
         Handler for the /teach command
         """
         self.logger.debug('Entering teach_alias_handler')
         # Teach the bot an alias
-        threading.Thread(target=self.__teach_alias, args=(update, context)).start()
+        # threading.Thread(target=self.__teach_alias, args=(update, context)).start()
+        await self.__teach_alias(update, context)
 
-    def forget_alias_command_handler(self, update: Update, context: CallbackContext):
+    async def forget_alias_command_handler(self, update: Update, context: CallbackContext):
         """
         Handler for the /forget command
         """
         self.logger.debug('Entering forget_alias_handler')
         # Remove an alias from the database
-        threading.Thread(target=self.__forget_alias, args=(update, context)).start()
+        # threading.Thread(target=self.__forget_alias, args=(update, context)).start()
+        await self.__forget_alias(update, context)
 
-    def mywords_command_handler(self, update: Update, context: CallbackContext):
+    async def mywords_command_handler(self, update: Update, context: CallbackContext):
         """
         Handler for the /mywords command
         """
         self.logger.debug('Entering mywords')
         # Get all aliases for a user
-        threading.Thread(target=self.__get_all_aliases, args=(update, context)).start()
+        # threading.Thread(target=self.__get_all_aliases, args=(update, context)).start()
+        await self.__get_all_aliases(update, context)
 
-    def photo_filter_handler(self, update: Update, context: CallbackContext):
+    async def photo_filter_handler(self, update: Update, context: CallbackContext):
         """
         Handler for photo messages
         """
         self.logger.debug('Entering photo_filter_handler')
         # Start thread to generate image
         if update.message.caption and "/variation" in update.message.caption:
-            threading.Thread(target=self.__sd_variation_handler, args=(update, context, 'photo')).start()        
+            # threading.Thread(target=self.__sd_variation_handler, args=(update, context, 'photo')).start()    
+            await self.__sd_variation_handler(update, context, 'photo')    
         self.logger.debug('Exiting photo_filter_handler')
 
-    def variation_command_handler(self, update: Update, context: CallbackContext):
+    async def variation_command_handler(self, update: Update, context: CallbackContext):
         """
         Handler for the /variation command
         """
         self.logger.debug('Entering variation_handler')
         if update.message.reply_to_message:
             if update.message.reply_to_message.photo:
-                threading.Thread(target=self.__sd_variation_handler, args=(update, context, 'reply')).start()
+                # threading.Thread(target=self.__sd_variation_handler, args=(update, context, 'reply')).start()
+                await self.__sd_variation_handler(update, context, 'reply')
             else:
-                self.__send_text_reply(update, context, 'Reply to an image or send a new photo to generate a variation.')
+                # self.__send_text_reply(update, context, 'Reply to an image or send a new photo to generate a variation.')
+                await self.__send_text_reply(update, context, 'Reply to an image or send a new photo to generate a variation.')
         self.logger.debug('Exiting variation_handler')
