@@ -5,7 +5,7 @@ services:
     build: .
     restart: always
     environment:
-    - "LOGLEVEL=DEBUG" # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    - "LOGLEVEL=ERROR" # DEBUG, INFO, WARNING, ERROR, CRITICAL
     - "TELEGRAM_BOT_TOKEN="
     - "STABLE_DIFFUSION_URL="
     - "DATABASE_URL=/app/data/sqlite/dilly-dalle-sd.db" # Only modify if you want different volume mappings. If you change the filename update entrypoint.sh
