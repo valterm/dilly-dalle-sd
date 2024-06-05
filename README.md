@@ -35,20 +35,21 @@ safemode - Toggle spoiler filter mode
 ```
 
 Grab your bot token, and bot username. and paste them into the `docker-compose.yml` env variables:
+
 ```yaml
 version: "3.9"
-	services:
-		dillydalle:
-			container_name: "dilly-dalle"
-			build: .
-			restart: always
-			environment:
-				- "LOGLEVEL=ERROR"
-				- "TELEGRAM_BOT_TOKEN=123456789:ABCDEFGabcdfgHIJKLMNOPhijklmnop123412"
-				- "STABLE_DIFFUSION_URL=http://127.0.0.1:7861"
-				- "DATABASE_URL=/app/data/sqlite/dilly-dalle-sd.db"
-			volumes:
-				- ./data:/app/data
+services:
+  dilly-dalle-sd:
+    container_name: "dilly-dalle-sd-bot"
+    build: .
+    restart: always
+    environment:
+    - "LOGLEVEL=ERROR" # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    - "TELEGRAM_BOT_TOKEN="
+    - "STABLE_DIFFUSION_URL="
+    - "DATABASE_URL=/app/data/sqlite/dilly-dalle-sd.db" # Only modify if you want different volume mappings. If you change the filename update entrypoint.sh
+    volumes:
+      - ./data:/app/data # sqlite db and generated images
 ```
 
 Make sure to adjust the `STABLE_DIFFUSION_URL` to point to your host address if you're running SD on a different machine.
