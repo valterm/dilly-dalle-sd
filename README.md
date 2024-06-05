@@ -63,4 +63,20 @@ This will build the image and start a container.
 The generated images and the back-end sqlite database will be stored in the `data` directory created when starting.
 
 
+## License
+This code is being released under CC BY-NC-SA 4.0. 
+See the `LICENSE` file for details.
+
+Additionally, the following third party libraries are used, without modification:
+
+|Library|Version|License|
+|--|--|--|
+|[python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) |21.2|GNU Lesser General Public License v3.0|
+|[requests](https://github.com/psf/requests)|2.31.0|Apache License 2.0|
+|[Pillow](https://github.com/python-pillow/Pillow/tree/main)|10.2.0|Historical Permission Notice and Disclaimer (HPND)|
+|[apsw](https://github.com/rogerbinns/apsw/tree/master)|3.45.1.0|Open Source License|
+
+
+General Notices
+This software dynamically links to libraries that are licensed under licenses differing from CC BY-NC-SA 4.0. Users are informed of their rights under this license and can obtain the source code of these libraries from the respective repositories linked above.
 
