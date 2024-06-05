@@ -80,3 +80,7 @@ Additionally, the following third party libraries are used, without modification
 General Notices
 This software dynamically links to libraries that are licensed under licenses differing from CC BY-NC-SA 4.0. Users are informed of their rights under this license and can obtain the source code of these libraries from the respective repositories linked above.
 
+## Support
+Please use the github issues page to report bugs and problems.
+
+If you want to contribute, feel free to [buy me a coffee.](https://paypal.me/mevalter/)
