@@ -30,8 +30,8 @@ class StableDiffusion:
             "steps": 150,
             "width": 512,
             "height": 512,
-            "refiner_checkpoint": "lrmLiangyiusRealistic_v15.safetensors",
-            "refiner_switch_at": 0.85,
+            #"refiner_checkpoint": "lrmLiangyiusRealistic_v15.safetensors",
+            #"refiner_switch_at": 0.85,
         }
         logging.debug(f"Payload: {payload}")
 
