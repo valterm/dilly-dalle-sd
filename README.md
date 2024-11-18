@@ -48,6 +48,7 @@ services:
     - "TELEGRAM_BOT_TOKEN="
     - "STABLE_DIFFUSION_URL="
     - "DATABASE_URL=/app/data/sqlite/dilly-dalle-sd.db" # Only modify if you want different volume mappings. If you change the filename update entrypoint.sh
+    - "STEPS=20" # The number of steps when creating the image
     volumes:
       - ./data:/app/data # sqlite db and generated images
 ```
