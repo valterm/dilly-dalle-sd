@@ -12,6 +12,7 @@ class App():
         # Load environment variables
         self.telegram_bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
         self.stable_diffusion_url = os.environ.get('STABLE_DIFFUSION_URL')
+        self.steps = os.environ.get('STEPS')
         self.loglevel = os.environ.get('LOGLEVEL')
         self.database = os.environ.get('DATABASE_URL')
 
@@ -28,7 +29,8 @@ class App():
         # Create handler
         command_handler = RequestHandler(
             database_path=self.database,
-            stable_diffusion_url=self.stable_diffusion_url
+            stable_diffusion_url=self.stable_diffusion_url,
+            steps=self.steps
         )
 
         # Create handlers

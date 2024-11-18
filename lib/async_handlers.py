@@ -8,7 +8,7 @@ import requests
 import logging
 from io import BytesIO
 
-# @TODO: Actually implement valueerror handling for the username for aliases
+# @TODO: Actually implement value error handling for the username for aliases
 
 
 

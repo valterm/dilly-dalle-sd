@@ -10,8 +10,9 @@ import base64
 
 
 class StableDiffusion:
-    def __init__(self, url):
+    def __init__(self, url, steps):
         self.url = url
+        self.steps = steps
 
     def generate_image(self, prompt, height="512", width="512", username=""):
         '''
@@ -27,7 +28,8 @@ class StableDiffusion:
         payload = {
             "prompt": prompt+fixed_prompt,
             "negative_prompt": fixed_negative_prompt,
-            "steps": 150,
+            # "steps": 150,
+            "steps": self.steps,
             "width": 512,
             "height": 512,
             #"refiner_checkpoint": "lrmLiangyiusRealistic_v15.safetensors",
@@ -70,11 +72,12 @@ class StableDiffusion:
             "prompt": prompt,
             "negative_prompt": fixed_negative_prompt,
             "init_images": [base64_string],
-            "steps": 150,
+            # "steps": 150,
+            "steps": self.steps,
             "width": 512,
             "height": 512,
-            "refiner_checkpoint": "lrmLiangyiusRealistic_v15.safetensors",
-            "refiner_switch_at": 0.85,
+            # "refiner_checkpoint": "lrmLiangyiusRealistic_v15.safetensors",
+            # "refiner_switch_at": 0.85,
         }
         response = requests.post(url=f'{self.url}{endpoint}', json=payload)
         r = response.json()

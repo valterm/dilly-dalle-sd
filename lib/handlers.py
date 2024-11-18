@@ -12,10 +12,11 @@ from io import BytesIO
 
 
 class RequestHandler:
-    def __init__(self, database_path: str, stable_diffusion_url: str):
+    def __init__(self, database_path: str, stable_diffusion_url: str, steps: int):
         self.logger = logging.getLogger(__name__)
         self.stable_diffusion_url = stable_diffusion_url
         self.dp = DataProcessor(database_path)
+        self.steps = steps
 
 ### HELPERS
     def __strip_input(self, input: str, experssions: list):
@@ -250,7 +251,7 @@ class RequestHandler:
                 prompt = prompt.replace(f"%{alias}", replacement)
 
         # Generate the image
-        sd = StableDiffusion(url=self.stable_diffusion_url)
+        sd = StableDiffusion(url=self.stable_diffusion_url, steps=self.steps)
         image_name = sd.generate_image(prompt)
         image_path = f"/app/data/images/{image_name}"
 
@@ -292,7 +293,7 @@ class RequestHandler:
         prompt = self.__strip_input(prompt, ['/variation', '@'+context.bot.username])
 
 
-        sd = StableDiffusion(url=self.stable_diffusion_url)
+        sd = StableDiffusion(url=self.stable_diffusion_url, steps=self.steps)
 
         img = sd.generate_image_variation(image=image_jpg, prompt=prompt, username=user['username'])
         image_path = f"/app/data/images/{img}"
