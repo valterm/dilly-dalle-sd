@@ -17,10 +17,11 @@ Class to handle requests from the user using async functions.
 '''
 
 class RequestHandler:
-    def __init__(self, database_path: str, stable_diffusion_url: str):
+    def __init__(self, database_path: str, stable_diffusion_url: str, steps: int):
         self.database = DataProcessor(database_path)
-        self.sd = StableDiffusion(stable_diffusion_url)
+        self.sd = StableDiffusion(stable_diffusion_url, steps)
         self.dp = DataProcessor(database_path)
+        self.steps = steps
         
         self.logger = logging.getLogger(__name__)
 
